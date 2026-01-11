@@ -212,3 +212,6 @@ verify_jwt = false
 
 [functions.check-inactive-companies]
 verify_jwt = false
+
+[functions.register-referred-customer]
+verify_jwt = false
