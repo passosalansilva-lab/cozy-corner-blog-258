@@ -167,6 +167,7 @@ export function CheckoutPage({ companyId, companyName, companySlug, companyPhone
   const [orderSummary, setOrderSummary] = useState<OrderSummary | null>(null);
   const [orderPaymentMethod, setOrderPaymentMethod] = useState<string | null>(null);
   const [orderItems, setOrderItems] = useState<typeof items>([]);
+  const [ticketsEarnedInOrder, setTicketsEarnedInOrder] = useState(0);
   
   // Coupon state
   const [couponCode, setCouponCode] = useState('');
@@ -474,6 +475,33 @@ export function CheckoutPage({ companyId, companyName, companySlug, companyPhone
   // No delivery fee for table orders
   const effectiveDeliveryFee = tableNumber ? 0 : deliveryFee;
   const total = subtotal - discountAmount + effectiveDeliveryFee;
+
+  // Helper to calculate lottery tickets earned
+  const calculateTicketsEarned = useCallback(async (orderSubtotal: number) => {
+    try {
+      const { data: lotterySettings } = await supabase
+        .from('lottery_settings')
+        .select('is_enabled, tickets_per_order, tickets_per_amount')
+        .eq('company_id', companyId)
+        .eq('is_enabled', true)
+        .maybeSingle();
+      
+      if (lotterySettings) {
+        let tickets = 0;
+        if (lotterySettings.tickets_per_order > 0) {
+          tickets += lotterySettings.tickets_per_order;
+        }
+        if (lotterySettings.tickets_per_amount > 0 && orderSubtotal > 0) {
+          tickets += Math.floor(orderSubtotal / lotterySettings.tickets_per_amount);
+        }
+        return tickets;
+      }
+      return 0;
+    } catch (err) {
+      console.error('Error fetching lottery settings:', err);
+      return 0;
+    }
+  }, [companyId]);
 
   const searchCep = useCallback(async (cep: string) => {
     const cleanCep = cep.replace(/\D/g, '');
@@ -1308,6 +1336,11 @@ export function CheckoutPage({ companyId, companyName, companySlug, companyPhone
       setOrderId(newOrderId);
       setOrderCustomerId(customerId);
       setOrderPaymentMethod(data.paymentMethod);
+      
+      // Calculate tickets earned for lottery display
+      const ticketsEarned = await calculateTicketsEarned(subtotal);
+      setTicketsEarnedInOrder(ticketsEarned);
+      
       setOrderComplete(true);
       clearCart();
 
@@ -1484,6 +1517,7 @@ export function CheckoutPage({ companyId, companyName, companySlug, companyPhone
               <LotteryTicketsCard
                 customerId={orderCustomerId}
                 companyId={companyId}
+                newTicketsEarned={ticketsEarnedInOrder}
               />
               <ReferralShareCard
                 customerId={orderCustomerId}
@@ -1535,14 +1569,16 @@ export function CheckoutPage({ companyId, companyName, companySlug, companyPhone
       <PixPaymentScreen
         pixData={pixPaymentData}
         companyId={companyId}
-        onSuccess={(newOrderId) => {
+        onSuccess={async (newOrderId) => {
           setPixPaymentData(null);
           setOrderId(newOrderId);
           setOrderCustomerId(loggedCustomer?.id || null);
-          setOrderComplete(true);
           setOrderPaymentMethod('online');
           setOrderSummary({ subtotal, discountAmount, deliveryFee, total });
           setOrderItems([...items]);
+          const ticketsEarned = await calculateTicketsEarned(subtotal);
+          setTicketsEarnedInOrder(ticketsEarned);
+          setOrderComplete(true);
           clearCart();
         }}
         onCancel={() => setPixPaymentData(null)}
@@ -1564,14 +1600,16 @@ export function CheckoutPage({ companyId, companyName, companySlug, companyPhone
       <PicPayPaymentScreen
         paymentData={picPayPaymentData}
         companyId={companyId}
-        onSuccess={(newOrderId) => {
+        onSuccess={async (newOrderId) => {
           setPicPayPaymentData(null);
           setOrderId(newOrderId);
           setOrderCustomerId(loggedCustomer?.id || null);
-          setOrderComplete(true);
           setOrderPaymentMethod('online');
           setOrderSummary({ subtotal, discountAmount, deliveryFee, total });
           setOrderItems([...items]);
+          const ticketsEarned = await calculateTicketsEarned(subtotal);
+          setTicketsEarnedInOrder(ticketsEarned);
+          setOrderComplete(true);
           clearCart();
         }}
         onCancel={() => setPicPayPaymentData(null)}
@@ -1612,14 +1650,16 @@ export function CheckoutPage({ companyId, companyName, companySlug, companyPhone
         couponId={appliedCoupon?.id}
         discountAmount={discountAmount}
         notes={cardPaymentData.formData.notes}
-        onSuccess={(newOrderId) => {
+        onSuccess={async (newOrderId) => {
           setCardPaymentData(null);
           setOrderId(newOrderId);
           setOrderCustomerId(loggedCustomer?.id || null);
-          setOrderComplete(true);
           setOrderPaymentMethod('online');
           setOrderSummary({ subtotal, discountAmount, deliveryFee, total });
           setOrderItems([...items]);
+          const ticketsEarned = await calculateTicketsEarned(subtotal);
+          setTicketsEarnedInOrder(ticketsEarned);
+          setOrderComplete(true);
           clearCart();
         }}
         onCancel={() => setCardPaymentData(null)}

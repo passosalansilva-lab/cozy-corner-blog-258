@@ -12,6 +12,8 @@ interface LotteryTicketsCardProps {
   pendingOrderMode?: boolean;
   /** Subtotal of the order (used to calculate potential tickets in pending mode) */
   orderSubtotal?: number;
+  /** Tickets just earned in this order (to show immediately after confirmation) */
+  newTicketsEarned?: number;
 }
 
 interface LotterySettings {
@@ -32,7 +34,8 @@ export function LotteryTicketsCard({
   customerId = '', 
   companyId, 
   pendingOrderMode = false,
-  orderSubtotal = 0 
+  orderSubtotal = 0,
+  newTicketsEarned = 0,
 }: LotteryTicketsCardProps) {
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<LotterySettings | null>(null);
@@ -188,7 +191,9 @@ export function LotteryTicketsCard({
     );
   }
 
-  // Normal mode - show current ticket count
+  // Normal mode - show current ticket count (include newTicketsEarned)
+  const displayCount = ticketCount + newTicketsEarned;
+  
   return (
     <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-xl p-4 border border-amber-500/20">
       <div className="flex items-center gap-3 mb-3">
@@ -198,12 +203,14 @@ export function LotteryTicketsCard({
         <div className="flex-1">
           <h3 className="font-semibold text-sm">Sorteio {getFrequencyLabel(settings.draw_frequency)}</h3>
           <p className="text-xs text-muted-foreground">
-            Cada pedido = mais chances de ganhar!
+            {newTicketsEarned > 0 
+              ? `Você ganhou +${newTicketsEarned} ticket${newTicketsEarned > 1 ? 's' : ''} neste pedido!`
+              : 'Cada pedido = mais chances de ganhar!'}
           </p>
         </div>
         <Badge variant="secondary" className="gap-1 bg-amber-500/20 text-amber-700 dark:text-amber-400">
           <Ticket className="h-3 w-3" />
-          {ticketCount} {ticketCount === 1 ? 'ticket' : 'tickets'}
+          {displayCount} {displayCount === 1 ? 'ticket' : 'tickets'}
         </Badge>
       </div>
 
