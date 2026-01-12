@@ -87,16 +87,22 @@ export function useSubscriptionStatus() {
       })) || DEFAULT_PLANS;
 
       // Dados locais da empresa para calcular uso
-      const { data: company } = await supabase
+      const { data: companyData } = await supabase
         .from('companies')
         .select('monthly_revenue, subscription_status, subscription_plan, subscription_end_date')
         .eq('owner_id', user.id)
         .maybeSingle();
 
-      if (!company) {
+      if (!companyData) {
         setLoading(false);
         return;
       }
+
+      // Cast to access potential revenue_limit_bonus field
+      const company = companyData as typeof companyData & { revenue_limit_bonus?: number };
+      
+      // Get bonus from company (default to 0 if column doesn't exist)
+      const revenueLimitBonus = Number(company.revenue_limit_bonus) || 0;
 
       // Consulta a função do backend; QUALQUER erro/401 cai em fallback de plano grátis
       const { data: subscriptionData, error: subscriptionError } =
@@ -111,20 +117,23 @@ export function useSubscriptionStatus() {
         
         // Get plan info from database plans
         const planInfo = plans.find(p => p.key === currentPlan);
-        const revenueLimit = planInfo?.revenueLimit || 2000;
+        const basePlanLimit = planInfo?.revenueLimit || 2000;
+        
+        // Apply bonus to the limit
+        const effectiveLimit = basePlanLimit + revenueLimitBonus;
         const displayName = planInfo?.name || 'Plano Gratuito';
         
         const usagePercentage =
-          revenueLimit === -1 ? 0 : (monthlyRevenue / revenueLimit) * 100;
+          effectiveLimit === -1 ? 0 : (monthlyRevenue / effectiveLimit) * 100;
         
-        const isNearLimit = revenueLimit !== -1 && usagePercentage >= 80 && usagePercentage < 100;
-        const isAtLimit = revenueLimit !== -1 && usagePercentage >= 100;
+        const isNearLimit = effectiveLimit !== -1 && usagePercentage >= 80 && usagePercentage < 100;
+        const isAtLimit = effectiveLimit !== -1 && usagePercentage >= 100;
         const recommendedPlan = (isNearLimit || isAtLimit) ? getRecommendedPlan(currentPlan, monthlyRevenue, plans) : undefined;
 
         setStatus({
           plan: currentPlan,
-          revenueLimit,
-          revenueLimitBonus: 0,
+          revenueLimit: effectiveLimit,
+          revenueLimitBonus,
           monthlyRevenue,
           displayName,
           subscriptionEnd: company.subscription_end_date || undefined,

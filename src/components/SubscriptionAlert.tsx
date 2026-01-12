@@ -1,4 +1,4 @@
-import { AlertTriangle, Crown } from 'lucide-react';
+import { AlertTriangle, Crown, Gift } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -14,6 +14,7 @@ interface RecommendedPlan {
 interface SubscriptionAlertProps {
   plan: string;
   revenueLimit: number;
+  revenueLimitBonus?: number;
   monthlyRevenue: number;
   displayName: string;
   isNearLimit: boolean;
@@ -25,6 +26,7 @@ interface SubscriptionAlertProps {
 export function SubscriptionAlert({
   plan,
   revenueLimit,
+  revenueLimitBonus = 0,
   monthlyRevenue,
   displayName,
   isNearLimit,
@@ -49,6 +51,9 @@ export function SubscriptionAlert({
     return formatCurrency(limit);
   };
 
+  // Calculate base limit (total - bonus)
+  const baseLimit = revenueLimit - revenueLimitBonus;
+
   return (
     <Alert
       variant={isAtLimit ? 'destructive' : 'default'}
@@ -66,6 +71,16 @@ export function SubscriptionAlert({
           <span className="font-medium">{displayName}</span>
         </div>
         
+        {/* Show bonus breakdown if bonus exists */}
+        {revenueLimitBonus > 0 && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
+            <Gift className="h-4 w-4 text-primary" />
+            <span>
+              Limite base: {formatCurrency(baseLimit)} + Bônus: {formatCurrency(revenueLimitBonus)} = {formatCurrency(revenueLimit)}
+            </span>
+          </div>
+        )}
+        
         <Progress
           value={Math.min(usagePercentage, 100)}
           className={`h-2 ${isAtLimit ? '[&>div]:bg-destructive' : '[&>div]:bg-warning'}`}
@@ -73,8 +88,8 @@ export function SubscriptionAlert({
         
         {isAtLimit ? (
           <p className="text-sm">
-            Parabéns pelo crescimento! Você atingiu o limite de faturamento do modo gratuito. 
-            Para continuar recebendo pedidos, é necessário assinar um plano.
+            Parabéns pelo crescimento! Você atingiu o limite de faturamento{revenueLimitBonus > 0 ? ' (incluindo bônus)' : ''} do seu plano. 
+            Para continuar recebendo pedidos, é necessário fazer upgrade.
             {recommendedPlan && (
               <span className="font-medium">
                 {' '}Recomendamos o <strong>{recommendedPlan.name}</strong> (até {formatLimit(recommendedPlan.revenueLimit)}/mês por {formatCurrency(recommendedPlan.price)}/mês).
@@ -83,8 +98,8 @@ export function SubscriptionAlert({
           </p>
         ) : (
           <p className="text-sm">
-            Você usou {usagePercentage.toFixed(0)}% do seu limite mensal de faturamento.
-            Ao atingir 100%, será necessário assinar um plano para continuar recebendo pedidos.
+            Você usou {usagePercentage.toFixed(0)}% do seu limite mensal de faturamento{revenueLimitBonus > 0 ? ' (incluindo bônus)' : ''}.
+            Ao atingir 100%, será necessário fazer upgrade para continuar recebendo pedidos.
             {recommendedPlan && (
               <span className="font-medium">
                 {' '}Considere mudar para o <strong>{recommendedPlan.name}</strong> (até {formatLimit(recommendedPlan.revenueLimit)}/mês por {formatCurrency(recommendedPlan.price)}/mês).

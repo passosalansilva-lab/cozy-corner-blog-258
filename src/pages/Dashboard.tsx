@@ -376,6 +376,7 @@ export default function Dashboard() {
           <SubscriptionAlert
             plan={subscriptionStatus.plan}
             revenueLimit={subscriptionStatus.revenueLimit}
+            revenueLimitBonus={subscriptionStatus.revenueLimitBonus}
             monthlyRevenue={subscriptionStatus.monthlyRevenue}
             displayName={subscriptionStatus.displayName}
             isNearLimit={subscriptionStatus.isNearLimit}
